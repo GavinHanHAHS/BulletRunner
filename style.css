@@ -1,0 +1,24 @@
+@font-face {
+  font-family: Orbitron;
+  src: url(Orbitron-Regular.ttf);
+}
+
+body {
+  font-family: Orbitron, sans-serif;
+  text-align: center;
+  background-color: grey;
+  margin-top: 120px;
+}
+
+canvas {
+  border: 2px dashed white;
+}
+
+img {
+  display: none;
+}
+
+.aboutText {
+  font-size: 13px;
+  color: darkgrey;
+}
