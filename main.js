@@ -136,9 +136,9 @@ function playerFunction() {
   if(player.y > 365) { // 365 = floorheight
     player.speed = 0;
     player.y = 365;
-  } else if(player.y < 110) {
+  } else if(player.y < 10) {
     player.speed = 0;
-    player.y = 110;
+    player.y = 10;
   }
 
   // collision detection
