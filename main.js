@@ -12,6 +12,8 @@ let images;
 
 let bullets = [];
 let background = [];
+let lasers = [];
+
 let run = 0;
 
 let counter = 0;
@@ -27,15 +29,15 @@ let gamestate = 1;
 
 // todo
 // - extra background elements
-// - actual laser sprites (w/ variation and shakiness)
+// - improve laser sprites (w/ variation and shakiness)
 //    -> many different middle sprites, like w/ tree?
-//    -> the ends are always the same so any goes with any
 // - ok the player sprite is slightly better but still kinda bad
 // - scientists you can high five maybe?
 // - more decorations for background elements, not just big grand ones
 //   but ones like lights, doors, signs etc.
 // - m o a r  sprites.
 // - also maybe make a background image for page to spice it up a lil.
+// when you die you should do an animation and then go back in time.
 
 
 
@@ -48,9 +50,12 @@ function start() {
     player: document.getElementById("player"),
     bullet: document.getElementById("bullet"),
     run: document.getElementById("run"),
-    fly: document.getElementById("fly")
+    fly: document.getElementById("fly"),
+    laserball: document.getElementById("laserball"),
+    laser: document.getElementById("laser")
   }
 
+  // background elements that're always there.
   background = [
     {type: "metalBinding", x: 225, y: 45},
     {type: "metalBinding", x: 525, y: 45},
@@ -60,7 +65,11 @@ function start() {
   requestAnimationFrame(main);
 }
 
-function main() {
+function main() { // =======================================================================
+  // global counter variable for things that take time.
+  counter++;
+  if(counter == 1000) counter = 0;
+
   if(gamestate == 0) {
     // put intro cutscene here
     gamestate = 1;
@@ -69,6 +78,8 @@ function main() {
 
     bulletsFunction();
 
+    laserLogic();
+
     playerFunction();
   }
 
@@ -76,7 +87,7 @@ function main() {
   requestAnimationFrame(main);
 }
 
-function backgroundFunction() {
+function backgroundFunction() { // =========================================================
   // main back wall
   ctx.fillStyle = "rgb(180, 180, 180)";
   ctx.fillRect(0, 0, cnv.width, cnv.height);
@@ -123,7 +134,7 @@ function backgroundFunction() {
   // draw any cool things that pass by here.
 }
 
-function playerFunction() {
+function playerFunction() { // ==============================================================
   // change player position
   if(keydown) { // if space is pressed then increased velocity
     player.speed += 0.65;
@@ -146,18 +157,20 @@ function playerFunction() {
 
   // add bullets if player is in the air
   if(player.y < 365 && keydown) { // 365 = player floorheight
-    for(let i = 0; i < 2; i++) {
+//    for(let i = 0; i < 1; i++) {
       addBullet();
-    }
-  } else if(player.y < 365 && Date.now() % 5 == 0) {
+      if(counter % 3 == 0) {
+        addBullet();
+      }
+//    }
+  } else if(player.y < 365 && counter % 10 == 0) {
     addBullet();
   }
 
   //run counter, to slow down the speed of run cycles
-  counter++;
-  if(counter > 5) {
+
+  if(counter % 7 == 0) {
     run++;
-    counter = 0;
     if(run > 7) {
       run = 0;
     }
@@ -166,12 +179,13 @@ function playerFunction() {
   if(player.y >= 365) {
     ctx.drawImage(images.run, 0 + (200 * run), 0, 200, 200, player.x - 20, player.y - 20, 128.2, 108.4);
   } else {
+    //ctx.drawImage(images.run, 0 + (200 * run), 0, 200, 200, player.x - 20, player.y - 20, 128.2, 108.4);
     ctx.drawImage(images.fly, player.x - 20, player.y - 20, 128.2, 108.4);
   }
 
 }
 
-function bulletsFunction() {
+function bulletsFunction() { // =============================================================
   // loop through every bullet and check if under floor
   for(let i = 0; i < bullets.length; i++) {
     if(bullets[i].y >= 425 || bullets[i].y <= 30 || bullets[i].x < -10 || bullets[i].x > 900) {
@@ -203,7 +217,7 @@ function bulletsFunction() {
   }
 }
 
-function addBullet() {
+function addBullet() { // ===================================================================
   // add a bullet to the bullet array, with random angle.
   let angle = 73 + Math.random() * 35;
 
@@ -214,7 +228,89 @@ function addBullet() {
     yAngle: Math.sin(angle * Math.PI / 180),
     degrees: angle
   });
+  /* joke code
+  bullets.push({
+    x: player.x + 20,
+    y: player.y + 42,
+    xAngle: Math.cos(angle * Math.PI / 180), // variables for angle in bullet.
+    yAngle: Math.sin(angle * Math.PI / 180),
+    degrees: angle
+  });
+  bullets.push({
+    x: player.x + 20,
+    y: player.y + 42,
+    xAngle: Math.cos(angle * Math.PI / 180), // variables for angle in bullet.
+    yAngle: Math.sin(angle * Math.PI / 180),
+    degrees: angle
+  });
+  
+  angle = Math.random() * 360;
+
+  bullets.push({
+    x: player.x + 20,
+    y: player.y + 42,
+    xAngle: Math.cos(angle * Math.PI / 180), // variables for angle in bullet.
+    yAngle: Math.sin(angle * Math.PI / 180),
+    degrees: angle
+  });*/
 }
+
+function laserLogic() { // ====================================================================
+  // add new laser periodically
+  if(counter % 150 == 0) {
+    lasers.push({
+      x: 950,
+      y: 30 + (Math.random() * 275),
+      length: 1 /*Math.floor(Math.random() * 2 + 1)*/,
+      angle: "v"
+    })
+    console.log(lasers);
+  }
+
+
+  if(lasers[0]) { // if there is a single laser
+    // change position of lasers
+    for(let i = 0; i < lasers.length; i++) {
+      lasers[i].x -= 5.5;
+      
+      // delete offscreen lasers
+      if(lasers[i].x <= -50) {
+        lasers.splice(i, 1);
+        i--;
+      }
+    }
+  }
+
+  ctx.fillStyle = "yellow";
+  // draw lasers
+  for(let i = 0; i < lasers.length; i++) {
+    if(lasers[i].angle == "v") { // rotate entire thing by 90 degrees if vertical
+      ctx.save();
+      ctx.translate(lasers[i].x + 25, lasers[i].y + 25);
+      ctx.rotate(90 * Math.PI / 180);
+      ctx.translate(-(lasers[i].x + 25), -(lasers[i].y + 25));
+    }
+    ctx.drawImage(images.laserball, lasers[i].x, lasers[i].y, 50, 50); // start of laster
+
+    let temp = 0;
+    for(let n = 1; n <= lasers[i].length; n++) {
+      ctx.drawImage(images.laser, lasers[i].x + (50 * n), lasers[i].y, 75, 50);
+      temp = n;
+    }
+
+    ctx.translate(lasers[i].x + 150, lasers[i].y + 25); // rotate end of laser 180 degrees
+    ctx.rotate(180 * Math.PI / 180);
+    ctx.translate(-(lasers[i].x + 150), -(lasers[i].y + 25));
+    console.log(temp);
+    ctx.drawImage(images.laserball, lasers[i].x + 175 - (temp * 50), lasers[i].y, 50, 50); // end of laser
+
+    ctx.restore();
+
+    //hitbox
+    //ctx.fillRect(lasers[i].x + 15, lasers[i].y + 15, 20, 125 * lasers[i].length);
+  }
+}
+
 
 // event listeners
 document.addEventListener("keydown", keyHandler);
