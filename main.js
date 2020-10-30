@@ -52,7 +52,9 @@ function start() {
     run: document.getElementById("run"),
     fly: document.getElementById("fly"),
     laserball: document.getElementById("laserball"),
-    laser: document.getElementById("laser")
+    laser: document.getElementById("laser"),
+    hit: document.getElementById("hit"),
+    hit2: document.getElementById("hit2")
   }
 
   // background elements that're always there.
@@ -81,6 +83,8 @@ function main() { // ===========================================================
     laserLogic();
 
     playerFunction();
+  } else {
+    // time travel cutscene + gameover screen
   }
 
 
@@ -101,47 +105,45 @@ function backgroundFunction() { // =============================================
   ctx.fillRect(0, cnv.height - 25, cnv.width, 25);
   ctx.fillRect(0, 0, cnv.width, 15);
 
-  // logic for scrolling bg
-  for(let i = 0; i < background.length; i++) {
-    background[i].x -= 5;
-    if(background[i].x <= -10 && background[i].type == "metalBinding") {
-      background[i].x = 910;
-    } else if(background[i].x <= -10 && background[i].type == "bulletHole") {
-      background.splice(i, 1);
-      i--;
-    }
-  }
+  // draw background objects
 
-  // draw metal binding thingies
-  ctx.fillStyle = "rgb(170, 170, 170)";
   for(let i = 0; i < background.length; i++) {
     if(background[i].type == "metalBinding") {
+      background[i].x -= 5;
+      if(background[i].x <= -10 && background[i].type == "metalBinding") {
+        background[i].x = 910;
+      }
+
+      ctx.fillStyle = "rgb(170, 170, 170)";
       ctx.fillRect(background[i].x, background[i].y, 3, 380); // big line
       for(let n = 0; n < 4; n++) {
         ctx.fillRect(background[i].x + 10, background[i].y + 20 + (100 * n), 7, 7); // studs
       } 
-    }
-  }
-
-  // bullet holes
-  ctx.fillStyle = "rgba(80, 80, 80, 0.4)";
-  for(let i = 0; i < background.length; i++) {
-    if(background[i].type == "bulletHole") {
+    } else if(background[i].type == "bulletHole") {
+      background[i].x -= 5;
+      ctx.fillStyle = "rgba(80, 80, 80, 0.4)";
       ctx.fillRect(background[i].x, background[i].y, 6, 6);
-    }
-  }
-
-  ctx.fillStyle = "yellow";
-  for(let i = 0; i < background.length; i++) {
-    if(background[i].type == "smallExplosion") {
-      ctx.fillRect(background[i].x, background[i].y, 8, 8);
-      if(background[i].life >= 3) {
+      if(background[i].x <= -10) {
         background.splice(i, 1);
+        i--;
+      }
+    } else if(background[i].type == "smallExplosion") {
+      background[i].x -= 5;
+      if(background[i].kind == 1) {
+        ctx.drawImage(images.hit, background[i].x, background[i].y, 15, 15);
+      } else {
+        ctx.drawImage(images.hit2, background[i].x, background[i].y, 15, 15);
+      }
+      if(background[i].life >= 4) {
+        background.splice(i, 1);
+        i--;
       } else {
         background[i].life++;
       }
     }
   }
+
+  
 
   // draw any cool things that pass by here.
 }
@@ -165,7 +167,22 @@ function playerFunction() { // =================================================
   }
 
   // collision detection
-  
+  for(let i = 0; i < lasers.length; i++) { // could make a collision detect function w/ inputs for square dimensions.
+    if(lasers[i].type == "v") { // vertical laser collision detection
+      if(player.y + 15 > lasers[i].y + 15 && 
+        player.y + 15 < lasers[i].y + 65 + (75 * lasers[i].length) || 
+        player.y + 85 < lasers[i].y + 65 + (75 * lasers[i].length) && 
+        player.y + 85 >lasers[i].y + 15) {
+        if(player.x + 30 > lasers[i].x + 15 &&
+          player.x + 30 < lasers[i].x + 35 ||
+          player.x + 50 > lasers[i].x + 15 &&
+          player.x + 50 < lasers[i].x + 35) {
+          gamestate++; 
+        }
+      }
+    }
+  }
+
 
   // add bullets if player is in the air
   if(player.y < 365 && keydown) { // 365 = player floorheight
@@ -194,6 +211,9 @@ function playerFunction() { // =================================================
     //ctx.drawImage(images.run, 0 + (200 * run), 0, 200, 200, player.x - 20, player.y - 20, 128.2, 108.4);
     ctx.drawImage(images.fly, player.x - 20, player.y - 20, 128.2, 108.4);
   }
+
+  // ctx.fillStyle = "blue";
+  // ctx.fillRect(player.x + 30, player.y + 15, 20, 70);
 }
 
 function bulletsFunction() { // =============================================================
@@ -212,7 +232,8 @@ function bulletsFunction() { // ================================================
           type: "smallExplosion",
           x: bullets[i].x + 20,
           y: yBullet,
-          life: 0
+          life: 0,
+          kind: Math.floor(Math.random() * 2 + 1)
         })
       }
       bullets.splice(i, 1);
@@ -223,8 +244,8 @@ function bulletsFunction() { // ================================================
   // loop through every bullet again, this time doing logic.
   for(let i = 0; i < bullets.length; i++) {
     // change every bullet depending on it's angle
-    bullets[i].x += bullets[i].xAngle * 12 - 2;
-    bullets[i].y += bullets[i].yAngle * 12;
+    bullets[i].x += bullets[i].xAngle * 15 - 2;
+    bullets[i].y += bullets[i].yAngle * 15;
   
     // draw every bullet, with correct rotation
     ctx.save();
@@ -240,6 +261,7 @@ function addBullet() { // ======================================================
   // add a bullet to the bullet array, with random angle.
   let angle = 73 + Math.random() * 35;
 
+
   bullets.push({
     x: player.x + 20,
     y: player.y + 42,
@@ -247,6 +269,7 @@ function addBullet() { // ======================================================
     yAngle: Math.sin(angle * Math.PI / 180),
     degrees: angle
   });
+
   /* joke code
   bullets.push({
     x: player.x + 20,
@@ -277,7 +300,7 @@ function addBullet() { // ======================================================
 function laserLogic() { // ====================================================================
   // add new laser periodically
   // good value is 40/50
-  if(counter % 4 == 0) {
+  if(counter % 300 == 0) {
     let d;
 
     if(Math.random() > 0.5) {
@@ -289,11 +312,10 @@ function laserLogic() { // =====================================================
     lasers.push({
       x: 950,
       y: 30 + (Math.random() * 275),
-      length: 2 /*Math.floor(Math.random() * 2 + 1)*/,
-      angle: d
+      length: Math.floor(Math.random() * 2 + 1),
+      type: d
     })
   }
-
 
   if(lasers[0]) { // if there is a single laser
     // change position of lasers
@@ -313,7 +335,7 @@ function laserLogic() { // =====================================================
   for(let i = 0; i < lasers.length; i++) {
     ctx.save();
 
-    if(lasers[i].angle == "v") { // rotate entire thing by 90 degrees if vertical
+    if(lasers[i].type == "v") { // rotate entire thing by 90 degrees if vertical
       ctx.translate(lasers[i].x + 25, lasers[i].y + 25);
       ctx.rotate(90 * Math.PI / 180);
       ctx.translate(-(lasers[i].x + 25), -(lasers[i].y + 25));
@@ -334,7 +356,7 @@ function laserLogic() { // =====================================================
     ctx.restore();
 
     //hitbox for vertical
-    // if(lasers[i].angle == "v") {
+    // if(lasers[i].type == "v") {
     //   ctx.fillRect(lasers[i].x + 15, lasers[i].y + 15, 20, 50 + 75 * lasers[i].length);
     // } else {
     //   ctx.fillRect(lasers[i].x + 15, lasers[i].y + 15, 50 + 75 * lasers[i].length, 20);
