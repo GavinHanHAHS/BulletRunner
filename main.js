@@ -29,6 +29,8 @@ let score = 0;
 let keydown = false;
 let gamestate = 1;
 
+let cutscene = false;
+
 // todo
 // - improve laser sprites (w/ variation and shakiness)
 //    -> many different middle sprites, like w/ tree?
@@ -41,6 +43,13 @@ let gamestate = 1;
 
 // = when die -> take snapshot of screen -> draw sign that bounces down over it -> give restart option
 // = seperate draw and logic of things (so i can keep drawing but without logic)
+
+
+// possible powerups
+// - invincibility temporary
+// - clear screen
+// - turn lasers into score pickups
+// - slowdown temporarily
 
 
 // do "start" function after page loads
@@ -56,7 +65,8 @@ function start() {
     laserball: document.getElementById("laserball"),
     laser: document.getElementById("laser"),
     hit: document.getElementById("hit"),
-    hit2: document.getElementById("hit2")
+    hit2: document.getElementById("hit2"),
+    death: document.getElementById("death")
   }
 
   setVars();
@@ -64,7 +74,7 @@ function start() {
   requestAnimationFrame(main);
 }
 
-function main() { // =======================================================================
+function main() {
   // global counter variable for things that take time.
   counter++;
   if(counter == 1000) counter = 0;
@@ -73,7 +83,9 @@ function main() { // ===========================================================
     // put intro cutscene here
     gamestate = 1;
   } else if(gamestate == 1) {
-    score++;
+    if(counter % 2 == 0) {
+      score++;
+    }
 
     backgroundFunction();
 
@@ -84,13 +96,48 @@ function main() { // ===========================================================
     playerFunction();
   } else {
     // time travel cutscene + gameover screen
+    drawBackground();
+
+    drawLasers();
+
+    drawBullets();
+
+    deathCutscene();
   }
 
 
   requestAnimationFrame(main);
 }
 
-function backgroundFunction() { // =========================================================
+function backgroundFunction() {
+  // draw background objects
+
+  for(let i = 0; i < background.length; i++) {
+    background[i].x -= 5;
+
+    if(background[i].type == "metalBinding") {
+      if(background[i].x <= -10 && background[i].type == "metalBinding") {
+        background[i].x = 910;
+      }
+    } else if(background[i].type == "bulletHole") {
+      if(background[i].x <= -10) {
+        background.splice(i, 1);
+        i--;
+      }
+    } else if(background[i].type == "smallExplosion") {
+      if(background[i].life >= 4) {
+        background.splice(i, 1);
+        i--;
+      } else {
+        background[i].life++;
+      }
+    }
+  }
+
+  drawBackground();
+}
+
+function drawBackground() {
   // main back wall
   ctx.fillStyle = "rgb(180, 180, 180)";
   ctx.fillRect(0, 0, cnv.width, cnv.height);
@@ -104,15 +151,10 @@ function backgroundFunction() { // =============================================
   ctx.fillRect(0, cnv.height - 25, cnv.width, 25);
   ctx.fillRect(0, 0, cnv.width, 15);
 
-  // draw background objects
 
+  // draw any cool things that pass by here.
   for(let i = 0; i < background.length; i++) {
-    background[i].x -= 5;
-
     if(background[i].type == "metalBinding") {
-      if(background[i].x <= -10 && background[i].type == "metalBinding") {
-        background[i].x = 910;
-      }
       ctx.fillStyle = "rgb(170, 170, 170)";
       ctx.fillRect(background[i].x, background[i].y, 3, 380); // big line
       for(let n = 0; n < 4; n++) {
@@ -121,34 +163,22 @@ function backgroundFunction() { // =============================================
     } else if(background[i].type == "bulletHole") {
       ctx.fillStyle = "rgba(80, 80, 80, 0.4)";
       ctx.fillRect(background[i].x, background[i].y, 6, 6);
-      if(background[i].x <= -10) {
-        background.splice(i, 1);
-        i--;
-      }
     } else if(background[i].type == "smallExplosion") {
       if(background[i].kind == 1) {
         ctx.drawImage(images.hit, background[i].x, background[i].y, 15, 15);
       } else {
         ctx.drawImage(images.hit2, background[i].x, background[i].y, 15, 15);
       }
-      if(background[i].life >= 4) {
-        background.splice(i, 1);
-        i--;
-      } else {
-        background[i].life++;
-      }
     }
   }
 
+  // score
   ctx.fillStyle = "white";
   ctx.font = "22px Orbitron";
   ctx.fillText(score, 5, 495);
-
-
-  // draw any cool things that pass by here.
 }
 
-function playerFunction() { // ==============================================================
+function playerFunction() {
   // change player position
   if(keydown) { // if space is pressed then increased velocity
     player.speed += 0.65;
@@ -222,15 +252,11 @@ function playerFunction() { // =================================================
   if(player.y >= 365) {
     ctx.drawImage(images.run, 0 + (200 * run), 0, 200, 200, player.x - 20, player.y - 20, 128.2, 108.4);
   } else {
-    //ctx.drawImage(images.run, 0 + (200 * run), 0, 200, 200, player.x - 20, player.y - 20, 128.2, 108.4);
     ctx.drawImage(images.fly, player.x - 20, player.y - 20, 128.2, 108.4);
   }
-
-  // ctx.fillStyle = "blue";
-  // ctx.fillRect(player.x + 30, player.y + 15, 20, 70);
 }
 
-function bulletsFunction() { // =============================================================
+function bulletsFunction() {
   // loop through every bullet and check if under floor
   for(let i = 0; i < bullets.length; i++) {
     if(bullets[i].y >= 425 || bullets[i].y <= 30 || bullets[i].x < -10 || bullets[i].x > 900) {
@@ -260,7 +286,13 @@ function bulletsFunction() { // ================================================
     // change every bullet depending on it's angle
     bullets[i].x += bullets[i].xAngle * (8 + bullets[i].spd) - 1;
     bullets[i].y += bullets[i].yAngle * (8 + bullets[i].spd);
-  
+  }
+
+  drawBullets();
+}
+
+function drawBullets() {
+  for(let i = 0; i < bullets.length; i++) {
     // draw every bullet, with correct rotation
     ctx.save();
     ctx.translate(bullets[i].x + 9, bullets[i].y + 9);
@@ -271,7 +303,7 @@ function bulletsFunction() { // ================================================
   }
 }
 
-function addBullet() { // ===================================================================
+function addBullet() {
   // add a bullet to the bullet array, with random angle.
   let angle = 73 + Math.random() * 35;
 
@@ -286,7 +318,7 @@ function addBullet() { // ======================================================
   });
 }
 
-function laserLogic() { // ====================================================================
+function laserLogic() {
   // add new laser periodically
   if(counter % 70 == 0) {
     let d;
@@ -318,7 +350,10 @@ function laserLogic() { // =====================================================
     }
   }
 
-  ctx.fillStyle = "yellow";
+  drawLasers();
+}
+
+function drawLasers() {
   // draw lasers
   for(let i = 0; i < lasers.length; i++) {
     ctx.save();
@@ -342,14 +377,6 @@ function laserLogic() { // =====================================================
     ctx.drawImage(images.laserball, lasers[i].x + 175 - (temp * 50), lasers[i].y, 50, 50); // end of laser
 
     ctx.restore();
-
-    //hitbox for vertical
-    // if(lasers[i].type == "v") {
-    //   ctx.fillRect(lasers[i].x + 15, lasers[i].y + 15, 20, 50 + 75 * lasers[i].length);
-    // } else {
-    //   ctx.fillRect(lasers[i].x + 15, lasers[i].y + 15, 50 + 75 * lasers[i].length, 20);
-    // }
-
   }
 }
 
@@ -377,6 +404,37 @@ function setVars() {
 
   keydown = false;
   gamestate = 1;
+
+  cutscene = false;
+}
+
+function deathCutscene() {
+  if(cutscene == false) {
+    run = 0;
+    counter = 0;
+    cutscene = true;
+  }
+
+  if(counter % 11 == 0) {
+    if(run <= 5) {
+      run++;
+    }
+  } else if(run >= 6) {
+    run += 0.5;
+    run += run / 14;
+    if(run > 450) {
+      run = 450;
+    }
+  }
+
+  ctx.drawImage(images.death, 0 + (200 * run), 0, 200, 200, player.x - 20, player.y - 20, 128.2, 108.4);
+  ctx.fillStyle = "rgb(129, 129, 129)";
+  ctx.fillRect(250, -300 + (run - 6), 400, 250);
+  ctx.fillStyle = "rgb(69, 69, 69)";
+  ctx.font = "40px Orbitron";
+  ctx.fillText("~ Game Over ~", 300, -220 + (run - 6));
+  ctx.font = "24px Orbitron";
+  ctx.fillText('Press "r" to go back in time.', 275, -150 + (run - 6));
 }
 
 
