@@ -24,21 +24,23 @@ let player = {
   speed: 0
 };
 
+let score = 0;
+
 let keydown = false;
 let gamestate = 1;
 
 // todo
-// - extra background elements
 // - improve laser sprites (w/ variation and shakiness)
 //    -> many different middle sprites, like w/ tree?
-// - ok the player sprite is slightly better but still kinda bad
 // - scientists you can high five maybe?
 // - more decorations for background elements, not just big grand ones
 //   but ones like lights, doors, signs etc.
-// - m o a r  sprites.
 // - also maybe make a background image for page to spice it up a lil.
 // - when you die you should do an animation and then go back in time.
 // - difficulty adjustment over time (increased speed, increased size, or increased generation)
+
+// = when die -> take snapshot of screen -> draw sign that bounces down over it -> give restart option
+// = seperate draw and logic of things (so i can keep drawing but without logic)
 
 
 // do "start" function after page loads
@@ -57,12 +59,7 @@ function start() {
     hit2: document.getElementById("hit2")
   }
 
-  // background elements that're always there.
-  background = [
-    {type: "metalBinding", x: 225, y: 45},
-    {type: "metalBinding", x: 525, y: 45},
-    {type: "metalBinding", x: 825, y: 45}
-  ]
+  setVars();
 
   requestAnimationFrame(main);
 }
@@ -76,6 +73,8 @@ function main() { // ===========================================================
     // put intro cutscene here
     gamestate = 1;
   } else if(gamestate == 1) {
+    score++;
+
     backgroundFunction();
 
     bulletsFunction();
@@ -108,19 +107,18 @@ function backgroundFunction() { // =============================================
   // draw background objects
 
   for(let i = 0; i < background.length; i++) {
+    background[i].x -= 5;
+
     if(background[i].type == "metalBinding") {
-      background[i].x -= 5;
       if(background[i].x <= -10 && background[i].type == "metalBinding") {
         background[i].x = 910;
       }
-
       ctx.fillStyle = "rgb(170, 170, 170)";
       ctx.fillRect(background[i].x, background[i].y, 3, 380); // big line
       for(let n = 0; n < 4; n++) {
         ctx.fillRect(background[i].x + 10, background[i].y + 20 + (100 * n), 7, 7); // studs
       } 
     } else if(background[i].type == "bulletHole") {
-      background[i].x -= 5;
       ctx.fillStyle = "rgba(80, 80, 80, 0.4)";
       ctx.fillRect(background[i].x, background[i].y, 6, 6);
       if(background[i].x <= -10) {
@@ -128,7 +126,6 @@ function backgroundFunction() { // =============================================
         i--;
       }
     } else if(background[i].type == "smallExplosion") {
-      background[i].x -= 5;
       if(background[i].kind == 1) {
         ctx.drawImage(images.hit, background[i].x, background[i].y, 15, 15);
       } else {
@@ -143,7 +140,10 @@ function backgroundFunction() { // =============================================
     }
   }
 
-  
+  ctx.fillStyle = "white";
+  ctx.font = "22px Orbitron";
+  ctx.fillText(score, 5, 495);
+
 
   // draw any cool things that pass by here.
 }
@@ -172,7 +172,7 @@ function playerFunction() { // =================================================
       if(player.y + 15 > lasers[i].y + 15 && 
         player.y + 15 < lasers[i].y + 65 + (75 * lasers[i].length) || 
         player.y + 85 < lasers[i].y + 65 + (75 * lasers[i].length) && 
-        player.y + 85 >lasers[i].y + 15) {
+        player.y + 85 > lasers[i].y + 15) {
         if(player.x + 30 > lasers[i].x + 15 &&
           player.x + 30 < lasers[i].x + 35 ||
           player.x + 50 > lasers[i].x + 15 &&
@@ -180,6 +180,20 @@ function playerFunction() { // =================================================
           gamestate++; 
         }
       }
+    } else if(lasers[i].type == "h") {
+      if(player.y + 15 < lasers[i].y + 15 &&
+        player.y + 85 > lasers[i].y + 35
+        ||
+        player.y + 15 > lasers[i].y + 15 &&
+        player.y + 15 < lasers[i].y + 35
+        ||
+        player.y + 85 > lasers[i].y + 15 &&
+        player.y + 85 < lasers[i].y + 35) {
+          if(player.x + 30 > lasers[i].x + 15 && 
+            player.x + 15 < lasers[i].x + 65 + (75 * lasers[i].length)) {
+              gamestate++;
+            }
+        }
     }
   }
 
@@ -188,7 +202,7 @@ function playerFunction() { // =================================================
   if(player.y < 365 && keydown) { // 365 = player floorheight
 //    for(let i = 0; i < 1; i++) {
       addBullet();
-      if(counter % 3 == 0) {
+      if(counter % 6 == 0) {
         addBullet();
       }
 //    }
@@ -244,15 +258,15 @@ function bulletsFunction() { // ================================================
   // loop through every bullet again, this time doing logic.
   for(let i = 0; i < bullets.length; i++) {
     // change every bullet depending on it's angle
-    bullets[i].x += bullets[i].xAngle * 15 - 2;
-    bullets[i].y += bullets[i].yAngle * 15;
+    bullets[i].x += bullets[i].xAngle * (8 + bullets[i].spd) - 1;
+    bullets[i].y += bullets[i].yAngle * (8 + bullets[i].spd);
   
     // draw every bullet, with correct rotation
     ctx.save();
-    ctx.translate(bullets[i].x + 10, bullets[i].y + 10);
+    ctx.translate(bullets[i].x + 9, bullets[i].y + 9);
     ctx.rotate((bullets[i].degrees + 85) * Math.PI / 180);
-    ctx.translate(-(bullets[i].x + 10), -(bullets[i].y + 10));
-    ctx.drawImage(images.bullet, bullets[i].x, bullets[i].y, 18, 30);
+    ctx.translate(-(bullets[i].x + 9), -(bullets[i].y + 9));
+    ctx.drawImage(images.bullet, bullets[i].x, bullets[i].y, 18, 18);
     ctx.restore();
   }
 }
@@ -267,40 +281,14 @@ function addBullet() { // ======================================================
     y: player.y + 42,
     xAngle: Math.cos(angle * Math.PI / 180), // variables for angle in bullet.
     yAngle: Math.sin(angle * Math.PI / 180),
-    degrees: angle
+    degrees: angle,
+    spd: Math.random() * 4
   });
-
-  /* joke code
-  bullets.push({
-    x: player.x + 20,
-    y: player.y + 42,
-    xAngle: Math.cos(angle * Math.PI / 180), // variables for angle in bullet.
-    yAngle: Math.sin(angle * Math.PI / 180),
-    degrees: angle
-  });
-  bullets.push({
-    x: player.x + 20,
-    y: player.y + 42,
-    xAngle: Math.cos(angle * Math.PI / 180), // variables for angle in bullet.
-    yAngle: Math.sin(angle * Math.PI / 180),
-    degrees: angle
-  });
-  
-  angle = Math.random() * 360;
-
-  bullets.push({
-    x: player.x + 20,
-    y: player.y + 42,
-    xAngle: Math.cos(angle * Math.PI / 180), // variables for angle in bullet.
-    yAngle: Math.sin(angle * Math.PI / 180),
-    degrees: angle
-  });*/
 }
 
 function laserLogic() { // ====================================================================
   // add new laser periodically
-  // good value is 40/50
-  if(counter % 300 == 0) {
+  if(counter % 70 == 0) {
     let d;
 
     if(Math.random() > 0.5) {
@@ -365,6 +353,32 @@ function laserLogic() { // =====================================================
   }
 }
 
+function setVars() {
+  bullets = [];
+  // background elements that're always there.
+  background = [
+    {type: "metalBinding", x: 225, y: 45},
+    {type: "metalBinding", x: 525, y: 45},
+    {type: "metalBinding", x: 825, y: 45}
+  ]
+  lasers = [];
+
+  run = 0;
+
+  counter = 0;
+
+  player = {
+    x: 90,
+    y: 365,
+    speed: 0
+  };
+
+  score = 0;
+
+  keydown = false;
+  gamestate = 1;
+}
+
 
 // event listeners
 document.addEventListener("keydown", keyHandler);
@@ -374,6 +388,9 @@ function keyHandler(event) {
   if(event.type == "keydown") {
     if(event.code == "Space" || event.code == "KeyF") {
       keydown = true;
+    } else if(event.code == "KeyR" && gamestate == 2) {
+      setVars();
+      gamestate = 1;
     }
   } else {
     if(event.code == "Space") {
